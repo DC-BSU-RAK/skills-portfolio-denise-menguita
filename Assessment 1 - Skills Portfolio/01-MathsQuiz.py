@@ -105,6 +105,56 @@ class MathQuiz:
         moderate.bind("<Button-1>", lambda e: self.start_quiz("Moderate"))
         advanced.bind("<Button-1>", lambda e: self.start_quiz("Advanced"))
 
+    def start_quiz(self, mode):
+        self.mode = mode
+        self.score = 0
+        self.total_questions = 0
+        self.next_question()
+
+    def next_question(self):
+        self.clear_window()
+        self.attempt = 1  #reset attempt
+
+        # Random number generation based on difficulty
+        if self.mode == "Easy":
+            num1 = random.randint(0, 9)
+            num2 = random.randint(0, 9)
+        elif self.mode == "Moderate":
+            num1 = random.randint(10, 99)
+            num2 = random.randint(10, 99)
+        else:  # Advanced
+            num1 = random.randint(1000, 9999)
+            num2 = random.randint(1000, 9999)
+
+        # Randomize operator
+        op = random.choice(["+", "-"])
+        self.correct_answer = num1 + num2 if op == "+" else num1 - num2
+
+        self.total_questions += 1
+
+        tk.Label(self.window, text=f"Question {self.total_questions}", font=("Comic Sans MS", 16, "bold")).pack(pady=10)
+        tk.Label(self.window, text=f"{num1} {op} {num2} = ?", font=("Comic Sans MS", 20)).pack(pady=20)
+
+        if self.mode == "Easy":
+            self.show_easy_mode()
+        elif self.mode == "Moderate":
+            self.show_moderate_mode()
+        else:
+            self.show_advanced_mode()
+
+    # EASY DIFF ----------------------------
+    def show_easy_mode(self):
+        choices = [self.correct_answer]
+        while len(choices) < 3: #three choices
+            wrong = self.correct_answer + random.randint(-5, 5)
+            if wrong not in choices:
+                choices.append(wrong)
+        random.shuffle(choices)
+
+        for choice in choices:
+            tk.Button(self.window, text=str(choice), width=10, height=2,
+                      command=lambda c=choice: self.check_answer(c)).pack(pady=5)
+
 # Run the program
 if __name__ == "__main__":
     app = MathQuiz(window)
