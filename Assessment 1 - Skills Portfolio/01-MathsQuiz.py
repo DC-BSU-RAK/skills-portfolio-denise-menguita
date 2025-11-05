@@ -155,6 +155,56 @@ class MathQuiz:
             tk.Button(self.window, text=str(choice), width=10, height=2,
                       command=lambda c=choice: self.check_answer(c)).pack(pady=5)
 
+    # MODERATE DIFF ----------------------------
+    def show_moderate_mode(self):
+        # Multiple choices
+        choices = [self.correct_answer]
+        while len(choices) < 3:
+            # Generate wrong answers
+            deviation = random.randint(-20, 20) #deviate 20 numbers away from the correct answer
+            wrong = self.correct_answer + deviation
+            # Ensure wrong answer is not too close to correct and not already in choices
+            if wrong != self.correct_answer and wrong not in choices and abs(deviation) >= 5:
+                choices.append(wrong)
+        random.shuffle(choices)
+
+        # Create buttons for each choice
+        for choice in choices:
+            tk.Button(self.window, text=str(choice), width=10, height=2,
+                      command=lambda c=choice: self.check_answer(c)).pack(pady=5)
+
+    # ADVANCED DIFF ----------------------------
+    def show_advanced_mode(self):
+        self.answer_var = tk.StringVar()
+        display = tk.Entry(self.window, textvariable=self.answer_var, font=("Comic Sans MS", 20), justify="center", state="readonly")
+        display.pack(pady=10)
+
+        # Input answers with keypad
+        keypad_frame = tk.Frame(self.window)
+        keypad_frame.pack()
+
+        buttons = [
+            ['7', '8', '9'],
+            ['4', '5', '6'],
+            ['1', '2', '3'],
+            ['0', '-', '←']
+        ]
+        for row in buttons:
+            frame_row = tk.Frame(keypad_frame)
+            frame_row.pack()
+            for key in row:
+                tk.Button(frame_row, text=key, width=5, height=2,
+                          command=lambda k=key: self.keypad_input(k)).pack(side="left", padx=2, pady=2)
+
+        tk.Button(self.window, text="Submit", command=lambda: self.check_answer(self.answer_var.get())).pack(pady=10)
+
+    def keypad_input(self, key):
+        current = self.answer_var.get()
+        if key == '←':
+            self.answer_var.set(current[:-1])
+        else:
+            self.answer_var.set(current + key)
+
 # Run the program
 if __name__ == "__main__":
     app = MathQuiz(window)
