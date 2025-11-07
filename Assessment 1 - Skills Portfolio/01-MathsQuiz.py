@@ -29,54 +29,68 @@ class MathQuiz:
 
     def create_start_screen(self):
         self.clear_window()
-        tk.Label(self.window, text="Baldynna's Maths Quiz", font=("Times New Roman", 30, "bold")).pack(pady=30)
-        tk.Label(self.window, text="Select Difficulty Level:", font=("Arial", 14)).pack(pady=10)
 
-        # Create a black square frame for the difficulty levels
-        board_outer = tk.Frame(self.window, background="brown")
-        board_outer.pack(padx=20, pady=20)
-
-        # Force window update to get proper coordinates
-        self.window.update_idletasks()
+        # Create title with different fonts
+        title_frame = tk.Frame(self.window)
+        title_frame.pack(pady=30)
         
-        # Add image overlapping the frame by 30 pixels
-        try:
-            self.side_image = tk.PhotoImage(file="Baldynna.png")  # Replace with your image file
-            image_label = tk.Label(self.window, image=self.side_image, bg="black", borderwidth=0)
-            # Calculate position relative to board_outer
-            board_x = board_outer.winfo_x()
-            board_y = board_outer.winfo_y()
-            image_label.place(x=board_x - 250 + 30, y=board_y)
-            image_label.lift()  # Ensure it's on top
-        except Exception as e:
-            print(f"Image loading error: {e}")
-            # Fallback if image doesn't load
-            placeholder = tk.Frame(self.window, width=250, height=600, bg="darkgray")
-            board_x = board_outer.winfo_x()
-            board_y = board_outer.winfo_y()
-            placeholder.place(x=board_x - 250 + 30, y=board_y)
-            placeholder.lift()  # Ensure it's on top
+        # Canvas for rotated "Baldynna's"
+        baldynna_canvas = tk.Canvas(title_frame, width=280, height=80, highlightthickness=0, bg=self.window.cget('bg'))
+        baldynna_canvas.pack(side="left", padx=(0, 5))
+        
+        baldynna_canvas.create_text(40, 50, text="Baldynna's", font=("Comic Sans MS", 30), 
+                                   fill="green", anchor="w", angle=10)
+        
+        # "Maths Quiz" in Times New Roman
+        maths_quiz_label = tk.Label(title_frame, text=" Maths Quiz", font=("Times New Roman", 30))
+        maths_quiz_label.pack(side="left", padx=(5, 0))
+        
+        tk.Label(self.window, text="Select Difficulty Level:", font=("Comic Sans MS", 14)).pack(pady=10)
+        self.displayMenu()
+
+    # Display the difficulty level menu
+    def displayMenu(self):
+        # Create a square frame for the difficulty levels
+        frame_size = 300
+        board_outer = tk.Frame(self.window, background="brown", width=frame_size, height=frame_size)
+        board_outer.pack(padx=20, pady=20)
+        board_outer.pack_propagate(False)  #prevent frame from shrinking to fit contents
 
         board_inner = tk.Frame(board_outer, bg="black", padx=20, pady=20)
-        board_inner.pack(padx=10, pady=10)
+        board_inner.pack(padx=10, pady=10, fill="both", expand=True)
+
+        try:
+            self.side_image = tk.PhotoImage(file="Assets/Baldynna.png")
+            image_label = tk.Label(self.window, image=self.side_image, borderwidth=0, bg=self.window.cget('bg'))
+            image_label.place(x=360, y=250) #fixed position to the left of the menu
+
+        # Fallback if image doesn't load
+        except Exception as e:
+            print(f"Image loading error: {e}")
+            placeholder = tk.Frame(self.window, width=250, height=600, bg="green")
+            placeholder.place(x=360, y=250)
 
         # Difficulty levels inside the black square
-        label_style = {"font": ("Arial", 18, "bold"), "bg": "black", "cursor": "hand2"}
+        label_style = {"font": ("Comic Sans MS", 18, "bold"), "bg": "black", "cursor": "hand2"}
+
+        # Center the labels
+        center_container = tk.Frame(board_inner, bg="black")
+        center_container.pack(fill="both", expand=True)
 
         # Create colored labels
-        easy = tk.Label(board_inner, text="EASY", fg="blue", **label_style)
-        moderate = tk.Label(board_inner, text="MODERATE", fg="green", **label_style)
-        advanced = tk.Label(board_inner, text="ADVANCED", fg="orange", **label_style)
+        easy = tk.Label(center_container, text="EASY", fg="blue", **label_style)
+        moderate = tk.Label(center_container, text="MODERATE", fg="green", **label_style)
+        advanced = tk.Label(center_container, text="ADVANCED", fg="orange", **label_style)
 
         # Add wavy underline on hover
         def add_wavy_underline(event):
             label = event.widget
             if hasattr(label, "_underline"):
-                return  # Already has underline
+                return 
             
-            # Create canvas for wavy line - use fixed width based on text length
+            # Create canvas for wavy line
             text_length = len(label.cget("text"))
-            width = text_length * 15  # Estimate width based on text
+            width = text_length * 15
             
             canvas = tk.Canvas(label, width=width, height=6, bg="black", highlightthickness=0)
             canvas.place(relx=0.5, rely=1.0, anchor="n")
@@ -95,11 +109,19 @@ class MathQuiz:
                 label._underline.destroy()
                 del label._underline
 
+        # Use grid for perfect centering in the center_container
+        center_container.grid_rowconfigure(0, weight=1)
+        center_container.grid_rowconfigure(4, weight=1)
+        center_container.grid_columnconfigure(0, weight=1)
+        
+        easy.grid(row=1, column=0, pady=8)
+        moderate.grid(row=2, column=0, pady=8)
+        advanced.grid(row=3, column=0, pady=8)
+
         for lbl in (easy, moderate, advanced):
-            lbl.pack(pady=8)
             lbl.bind("<Enter>", add_wavy_underline)
             lbl.bind("<Leave>", remove_wavy_underline)
-            
+
         # Make the labels clickable
         easy.bind("<Button-1>", lambda e: self.start_quiz("Easy"))
         moderate.bind("<Button-1>", lambda e: self.start_quiz("Moderate"))
@@ -131,7 +153,10 @@ class MathQuiz:
         self.correct_answer = num1 + num2 if op == "+" else num1 - num2
 
         self.total_questions += 1
+        self.displayProblem(num1, op, num2)
 
+    # Display the question to the user and accept their answer
+    def displayProblem(self, num1, op, num2):
         tk.Label(self.window, text=f"Question {self.total_questions}", font=("Comic Sans MS", 16, "bold")).pack(pady=10)
         tk.Label(self.window, text=f"{num1} {op} {num2} = ?", font=("Comic Sans MS", 20)).pack(pady=20)
 
