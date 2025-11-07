@@ -5,6 +5,7 @@ import tkinter as tk
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import random
+import pygame #for sound
 
 # Create window
 window = ctk.CTk()
@@ -26,6 +27,36 @@ class MathQuiz:
         self.score = 0
         self.total_questions = 0
         self.attempt = 1  #track attempts per question
+
+        # Pygame mixer for sound effects
+        pygame.mixer.init()
+
+        # Load sound effects
+        self.correct_sound = pygame.mixer.Sound("Assets/correct.mp3")
+        self.wrong_sound = pygame.mixer.Sound("Assets/wrong.mp3")
+
+        # STYLING FOR BUTTONS
+        # Multiple Choice
+        self.choice_style = {
+            "font": ("Comic Sans MS", 18, "bold"),
+            "width": 100,
+            "height": 50,
+            "fg_color": "#4CAF50",
+            "hover_color": "#388E3C", 
+            "text_color": "white",
+            "corner_radius": 14
+        }
+
+        # Other buttons
+        self.button_style = {
+            "font": ("Comic Sans MS", 18, "bold"),
+            "width": 180,
+            "height": 50,
+            "fg_color": "#4CAF50",
+            "hover_color": "#388E3C",
+            "text_color": "white",
+            "corner_radius": 14
+        }
 
         self.create_start_screen()
 
@@ -69,16 +100,10 @@ class MathQuiz:
         board_inner = ctk.CTkFrame(board_outer, fg_color="black")
         board_inner.pack(padx=20, pady=20, fill="both", expand=True)
 
-        try:
-            self.side_image = ImageTk.PhotoImage(Image.open("Assets/Baldynna.png"))
-            image_label = ctk.CTkLabel(self.window, image=self.side_image, text="", fg_color="transparent")
-            image_label.place(x=360, y=250) #fixed position to the left of the menu
-
-        # Fallback if image doesn't load
-        except Exception as e:
-            print(f"Image loading error: {e}")
-            placeholder = ctk.CTkFrame(self.window, width=250, height=600, fg_color="transparent")
-            placeholder.place(x=360, y=250)
+        # Baldynna
+        self.side_image = ImageTk.PhotoImage(Image.open("Assets/Baldynna.png"))
+        image_label = ctk.CTkLabel(self.window, image=self.side_image, text="", fg_color="transparent")
+        image_label.place(x=390, y=250) #fixed position to the left of the menu
 
         # Difficulty levels inside the black square
         label_style = {"font": ("Comic Sans MS", 20, "bold"), "bg": "black", "cursor": "hand2"}
@@ -172,6 +197,15 @@ class MathQuiz:
         self.clear_window()
         self.attempt = 1  #reset attempt
 
+        try:
+            pil_image = Image.open("Assets/brick_kues.jpg")
+            self.bg_image = ImageTk.PhotoImage(pil_image)
+            bg_label = ctk.CTkLabel(self.window, image=self.bg_image, text="")
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+            bg_label.lower()  # send background to back
+        except Exception as e:
+            print(f"Background image loading error: {e}")
+            
         # Random number generation based on difficulty
         if self.mode == "Easy":
             num1 = random.randint(0, 9)
@@ -286,6 +320,84 @@ class MathQuiz:
             self.answer_var.set(current[:-1])
         else:
             self.answer_var.set(current + key)
+
+    # CHECK ANSWER ----------------------------
+    def check_answer(self, user_answer):
+        try:
+            user_answer = int(user_answer)
+        except:
+            result = f"Invalid input! Try again."
+            self.show_retry(result, retry=True)
+            return
+
+        if user_answer == self.correct_answer:
+            # Play correct sound effect
+            if self.correct_sound:
+                self.correct_sound.play()
+                
+            if self.attempt == 1:
+                self.score += 10
+                result = "Correct! (+10 notebooks)"
+            else:
+                self.score += 5
+                result = "Correct on second try! (+5 notebooks)"
+            self.show_result(result)
+        else:
+            # Play wrong sound effect
+            if self.wrong_sound:
+                self.wrong_sound.play()
+                
+            if self.attempt == 1:
+                self.attempt += 1
+                result = "Wrong! Try again."
+                self.show_retry(result, retry=True)
+            else:
+                result = f"Wrong again! The correct answer was {self.correct_answer}."
+                self.show_result(result)
+
+    # Check whether the user's answer was correct
+    def isCorrect(self, user_answer):
+        return user_answer == self.correct_answer
+    
+    def show_retry(self, result_text, retry=False):
+        self.clear_window()
+        # Keep brick background from next_question
+        ctk.CTkLabel(self.window, text=result_text, font=("Comic Sans MS", 24), 
+                    fg_color="transparent", text_color="black").pack(pady=20)
+        ctk.CTkLabel(self.window, text=f"Notebooks: {self.score}", font=("Comic Sans MS", 18),
+                    fg_color="transparent", text_color="black").pack(pady=10)
+
+        if retry:
+            ctk.CTkButton(self.window, text="Try Again", **self.button_style,
+                         command=self.retry_question).pack(pady=10)
+        ctk.CTkButton(self.window, text="Back to Menu", **self.button_style,
+                     command=self.create_start_screen).pack(pady=10)
+
+    def retry_question(self):
+        self.clear_window()
+        ctk.CTkLabel(self.window, text=f"Attempt 2", font=("Comic Sans MS", 16, "bold")).pack(pady=10)
+        ctk.CTkLabel(self.window, text=f"Try again!", font=("Comic Sans MS", 14)).pack(pady=5)
+
+        # Rebuild question interface based on mode
+        if self.mode == "Easy":
+            self.show_easy_mode()
+        elif self.mode == "Moderate":
+            self.show_moderate_mode()
+        else:
+            self.show_advanced_mode()
+
+    def show_result(self, result_text):
+        self.clear_window()
+        # Keep brick background from next_question
+        ctk.CTkLabel(self.window, text=result_text, font=("Comic Sans MS", 24),
+                    fg_color="transparent", text_color="black").pack(pady=20)
+        ctk.CTkLabel(self.window, text=f"Notebooks: {self.score}", font=("Comic Sans MS", 18),
+                    fg_color="transparent", text_color="black").pack(pady=10)
+
+        ctk.CTkButton(self.window, text="Next Question", **self.button_style,
+                     command=self.next_question).pack(pady=10)
+        ctk.CTkButton(self.window, text="Back to Menu", **self.button_style,
+                     command=self.create_start_screen).pack(pady=10)
 
 # Run the program
 if __name__ == "__main__":
