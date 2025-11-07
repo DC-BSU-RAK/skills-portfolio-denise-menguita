@@ -21,6 +21,9 @@ class MathQuiz:
         self.window = window
         self.window.title("Baldynna's Maths Quiz")
         
+        # Favicon
+        self.window.iconbitmap("Assets/Favicon.ico")
+
         # Tkinter window size
         self.window.geometry("%dx%d" % (width, height)) #make it fullscreen
         self.mode = None
@@ -41,10 +44,12 @@ class MathQuiz:
             "font": ("Comic Sans MS", 18, "bold"),
             "width": 100,
             "height": 50,
-            "fg_color": "#4CAF50",
-            "hover_color": "#388E3C", 
+            "fg_color": "#9C27B0",
+            "hover_color": "#7B1FA2", 
             "text_color": "white",
-            "corner_radius": 14
+            "corner_radius": 14,
+            "border_width": 2,
+            "border_color": "#7B1FA2"
         }
 
         # Other buttons
@@ -72,15 +77,15 @@ class MathQuiz:
         title_frame.pack(pady=30)
         
         # Baldynna's
-        baldynna_canvas = ctk.CTkCanvas(title_frame, width=260, height=80, highlightthickness=0, bg="#fefefe")
-        baldynna_canvas.pack(side="left", padx=(0, 5))
+        baldynna_canvas = ctk.CTkCanvas(title_frame, width=280, height=90, highlightthickness=0, bg="#fefefe")
+        baldynna_canvas.pack(side="left", padx=(0, 0))
         #rotate canvas
-        baldynna_canvas.create_text(40, 50, text="Baldynna's", font=("Comic Sans MS", 34), fill="green", anchor="w", angle=10)
+        baldynna_canvas.create_text(5, 65, text="Baldynna's", font=("Comic Sans MS", 40), fill="green", anchor="w", angle=10)
 
         # Math's Quiz
-        maths_quiz_label = ctk.CTkLabel(title_frame, text=" Maths Quiz", font=("Times New Roman", 34, "bold"), 
+        maths_quiz_label = ctk.CTkLabel(title_frame, text=" Maths Quiz", font=("Times New Roman", 40, "bold"), 
                                        fg_color="#fefefe", text_color="black")
-        maths_quiz_label.pack(side="left", padx=(5, 0))
+        maths_quiz_label.pack(side="left", padx=(0, 0))
         
         ctk.CTkLabel(self.window, text="Select Difficulty Level:", font=("Comic Sans MS", 24), 
                     fg_color="#fefefe", text_color="black").pack(pady=10)
@@ -226,18 +231,40 @@ class MathQuiz:
 
     # Display the question to the user and accept their answer
     def displayProblem(self, num1, op, num2):
-        ctk.CTkLabel(self.window, text=f"Question {self.total_questions}", font=("Comic Sans MS", 24, "bold")).pack(pady=10)
-        ctk.CTkLabel(self.window, text=f"{num1} {op} {num2} = ?", font=("Comic Sans MS", 20)).pack(pady=20)
+        # Store current question for retry
+        self.current_num1 = num1
+        self.current_op = op
+        self.current_num2 = num2
+
+        # Height based on mode
+        frame_height = 700 if self.mode == "Advanced" else 400
+
+        # Main green frame for everything
+        main_frame = ctk.CTkFrame(self.window, width=500, height=frame_height, fg_color="#4CAF50", corner_radius=14)
+        main_frame.pack(pady=40)
+        main_frame.pack_propagate(False)  # prevent frame from shrinking to fit contents
+        
+        # Question No.
+        ctk.CTkLabel(main_frame, text=f"Question {self.total_questions}", 
+                     font=("Comic Sans MS", 30, "bold"),
+                     fg_color="#4CAF50",
+                     text_color="white").pack(pady=10)
+        
+        # Problem
+        ctk.CTkLabel(main_frame, text=f"{num1} {op} {num2} = ?", 
+                     font=("Comic Sans MS", 28, "bold"),
+                     fg_color="#4CAF50",
+                     text_color="white").pack(pady=15)
 
         if self.mode == "Easy":
-            self.show_easy_mode()
+            self.show_easy_mode(main_frame)
         elif self.mode == "Moderate":
-            self.show_moderate_mode()
+            self.show_moderate_mode(main_frame)
         else:
-            self.show_advanced_mode()
+            self.show_advanced_mode(main_frame)
 
     # EASY DIFF ----------------------------
-    def show_easy_mode(self):
+    def show_easy_mode(self, main_frame):
         choices = [self.correct_answer]
         while len(choices) < 3: #three choices
             wrong = self.correct_answer + random.randint(-5, 5)
@@ -246,12 +273,12 @@ class MathQuiz:
         random.shuffle(choices)
 
         for choice in choices:
-            btn = ctk.CTkButton(self.window, text=str(choice), **self.choice_style)
+            btn = ctk.CTkButton(main_frame, text=str(choice), **self.choice_style)
             btn.configure(command=lambda c=choice: self.check_answer(c))
-            btn.pack(pady=15)
+            btn.pack(pady=14)
 
     # MODERATE DIFF ----------------------------
-    def show_moderate_mode(self):
+    def show_moderate_mode(self, main_frame):
         # Multiple choices
         choices = [self.correct_answer]
         while len(choices) < 3:
@@ -265,19 +292,27 @@ class MathQuiz:
 
         # Create buttons for each choice
         for choice in choices:
-            btn = ctk.CTkButton(self.window, text=str(choice), **self.choice_style)
+            btn = ctk.CTkButton(main_frame, text=str(choice), **self.choice_style)
             btn.configure(command=lambda c=choice: self.check_answer(c))
-            btn.pack(pady=15)
+            btn.pack(pady=14)
 
     # ADVANCED DIFF ----------------------------
-    def show_advanced_mode(self):
+    def show_advanced_mode(self, main_frame):
         self.answer_var = ctk.StringVar(value="")
-        display = ctk.CTkEntry(self.window, textvariable=self.answer_var, font=("Comic Sans MS", 20), justify="center", state="readonly")
-        display.pack(pady=10)
+        
+        # Entry Field
+        display = ctk.CTkEntry(main_frame, textvariable=self.answer_var, 
+                              font=("Comic Sans MS", 18), 
+                              justify="center", 
+                              state="readonly",
+                              width=200,
+                              height=50,
+                              border_color = "#9C27B0")
+        display.pack(pady=20)
 
-        # Input answers with keypad
-        keypad_frame = ctk.CTkFrame(self.window)
-        keypad_frame.pack()
+        # Keypad
+        keypad_frame = ctk.CTkFrame(main_frame, fg_color="#4CAF50")
+        keypad_frame.pack(pady=10)
 
         buttons = [
             ['7', '8', '9'],
@@ -292,24 +327,25 @@ class MathQuiz:
             "height": 70,
             "font": ("Comic Sans MS", 18, "bold"),
             "corner_radius": 14,
-            "fg_color": "#4CAF50",
-            "hover_color": "#388E3C", 
+            "fg_color": "#9C27B0",
+            "hover_color": "#7B1FA2", 
             "text_color": "white"
         }
 
         for row in buttons:
-            frame_row = ctk.CTkFrame(keypad_frame)
-            frame_row.pack()
+            row_frame = ctk.CTkFrame(keypad_frame, fg_color="#4CAF50")
+            row_frame.pack()
             for key in row:
-                ctk.CTkButton(frame_row, text=key, **keypad_style,
+                ctk.CTkButton(row_frame, text=key, **keypad_style,
                           command=lambda k=key: self.keypad_input(k)).pack(side="left", padx=5, pady=5)
 
-        ctk.CTkButton(self.window, text="Submit", 
+        # Submit
+        ctk.CTkButton(main_frame, text="Submit", 
                      font=("Comic Sans MS", 18, "bold"),
                      width=120,
                      height=50,
-                     fg_color="#4CAF50", 
-                     hover_color="#388E3C", 
+                     fg_color="#9C27B0", 
+                     hover_color="#7B1FA2", 
                      text_color="white",
                      corner_radius=14,
                      command=lambda: self.check_answer(self.answer_var.get())).pack(pady=20)
@@ -375,16 +411,46 @@ class MathQuiz:
 
     def retry_question(self):
         self.clear_window()
-        ctk.CTkLabel(self.window, text=f"Attempt 2", font=("Comic Sans MS", 16, "bold")).pack(pady=10)
-        ctk.CTkLabel(self.window, text=f"Try again!", font=("Comic Sans MS", 14)).pack(pady=5)
+        
+        # Recreate the background
+        try:
+            bg_label = ctk.CTkLabel(self.window, image=self.bg_image, text="")
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+            bg_label.lower()
+        except:
+            pass
+            
+        # Set height based on mode
+        frame_height = 700 if self.mode == "Advanced" else 400
+        
+        # Recreate main frame
+        main_frame = ctk.CTkFrame(self.window, fg_color="#4CAF50", corner_radius=14, width=500, height=frame_height)
+        main_frame.pack(pady=40)
+        main_frame.pack_propagate(False)
+        
+        # Display attempt info
+        ctk.CTkLabel(main_frame, text=f"Attempt 2", 
+                     font=("Comic Sans MS", 24, "bold"),
+                     fg_color="#4CAF50",
+                     text_color="white").pack(pady=5)
+        ctk.CTkLabel(main_frame, text=f"Try again!", 
+                     font=("Comic Sans MS", 18),
+                     fg_color="#4CAF50",
+                     text_color="white").pack(pady=5)
+        
+        # Problem (recreate the question)
+        ctk.CTkLabel(main_frame, text=f"{self.current_num1} {self.current_op} {self.current_num2} = ?", 
+                     font=("Comic Sans MS", 28, "bold"),
+                     fg_color="#4CAF50",
+                     text_color="white").pack(pady=15)
 
         # Rebuild question interface based on mode
         if self.mode == "Easy":
-            self.show_easy_mode()
+            self.show_easy_mode(main_frame)
         elif self.mode == "Moderate":
-            self.show_moderate_mode()
+            self.show_moderate_mode(main_frame)
         else:
-            self.show_advanced_mode()
+            self.show_advanced_mode(main_frame)
 
     def show_result(self, result_text):
         self.clear_window()
@@ -394,8 +460,12 @@ class MathQuiz:
         ctk.CTkLabel(self.window, text=f"Notebooks: {self.score}", font=("Comic Sans MS", 18),
                     fg_color="transparent", text_color="black").pack(pady=10)
 
-        ctk.CTkButton(self.window, text="Next Question", **self.button_style,
-                     command=self.next_question).pack(pady=10)
+        if self.total_questions >= 10:
+            ctk.CTkButton(self.window, text="See Final Results", **self.button_style,
+                         command=self.displayResults).pack(pady=10)
+        else:
+            ctk.CTkButton(self.window, text="Next Question", **self.button_style,
+                         command=self.next_question).pack(pady=10)
         ctk.CTkButton(self.window, text="Back to Menu", **self.button_style,
                      command=self.create_start_screen).pack(pady=10)
 
