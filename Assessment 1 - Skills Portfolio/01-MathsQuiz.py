@@ -31,6 +31,12 @@ class MathQuiz:
         self.total_questions = 0
         self.attempt = 1  #track attempts per question
 
+        # Timer
+        self.timer_enabled = False  #timer toggle
+        self.time_left = 0
+        self.timer_label = None
+        self.timer_running = False
+
         # Pygame mixer for sound effects
         pygame.mixer.init()
 
@@ -72,9 +78,12 @@ class MathQuiz:
     def create_start_screen(self):
         self.clear_window()
 
+        # Set window background for start screen
+        self.window.configure(fg_color="#fefefe")
+
         # Create title with different fonts
-        title_frame = tk.Frame(self.window)
-        title_frame.pack(pady=30)
+        title_frame = ctk.CTkFrame(self.window, fg_color="#fefefe")
+        title_frame.pack(pady=60)
         
         # Baldynna's
         baldynna_canvas = ctk.CTkCanvas(title_frame, width=280, height=90, highlightthickness=0, bg="#fefefe")
@@ -91,8 +100,21 @@ class MathQuiz:
                     fg_color="#fefefe", text_color="black").pack(pady=10)
         self.displayMenu()
 
-        ctk.CTkLabel(self.window, text="Inspired by Baldi's Basics",
-                     font=("Comic Sans MS", 14), fg_color="#fefefe", text_color="black").pack(side="bottom", pady=10)
+        # Bottom section
+        bottom_frame = ctk.CTkFrame(self.window, fg_color="transparent")
+        bottom_frame.pack(side="bottom", fill="x", padx=20, pady=20)
+
+        ctk.CTkLabel(bottom_frame, text="Inspired by Baldi's Basics",
+                     font=("Comic Sans MS", 14), fg_color="transparent", text_color="black").pack(side="left")
+        
+        # Timer toggle at bottom right
+        self.timer_var = ctk.StringVar(value="off")
+        timer_switch = ctk.CTkSwitch(bottom_frame, text="Enable Timer", 
+                                   variable=self.timer_var, onvalue="on", offvalue="off",
+                                   font=("Comic Sans MS", 20),
+                                   progress_color="#4CAF50", # Green when on
+                                   button_hover_color="#1B5E20") # Darker green on hover
+        timer_switch.pack(side="right")
 
     # Display the difficulty level menu
     def displayMenu(self):
@@ -196,11 +218,69 @@ class MathQuiz:
         self.mode = mode
         self.score = 0
         self.total_questions = 0
+        self.questions_remaining = 10 #quiz to runs for 10 questions then show results
         self.next_question()
+        self.start_timer()  #start timer after quiz begins
+
+    def randomInt(self, mode):
+        if mode == "Easy":
+            return random.randint(0, 9), random.randint(0, 9)
+        elif mode == "Moderate":
+            return random.randint(10, 99), random.randint(10, 99)
+        else:  # Advanced
+            return random.randint(1000, 9999), random.randint(1000, 9999)
+        
+    def start_timer(self):
+        if self.timer_var.get() == "on":
+            self.timer_enabled = True
+            # Set time based on difficulty
+            if self.mode == "Easy":
+                self.time_left = 60
+            elif self.mode == "Moderate":
+                self.time_left = 40  
+            else:  #Advanced
+                self.time_left = 20 
+            
+            self.total_time = self.time_left
+            self.timer_running = True
+            
+            # Progress bar at bottom
+            self.timer_progress = ctk.CTkProgressBar(self.window, width=400, height=25,
+                                                   progress_color="#FF0000", fg_color="#CCCCCC")
+            self.timer_progress.place(relx=0.5, rely=0.95, anchor="center")
+            self.timer_progress.set(1.0)
+            
+            self.update_timer()
+
+    def update_timer(self):
+        if self.timer_running and self.time_left > 0:
+            # Update progress
+            progress = self.time_left / self.total_time
+            self.timer_progress.set(progress)
+            
+            self.time_left -= 1
+            self.window.after(1000, self.update_timer)
+        elif self.timer_running and self.time_left <= 0:
+            self.timer_running = False
+            self.cleanup_timer()
+            self.show_result("Time's up! Moving to next question.")
+
+    def stop_timer(self):
+        self.timer_running = False
+        self.cleanup_timer()
+
+    def cleanup_timer(self):
+        if hasattr(self, 'timer_progress') and self.timer_progress:
+            self.timer_progress.destroy()
+            self.timer_progress = None
+        if self.timer_label:
+            self.timer_label.destroy()
+            self.timer_label = None
 
     def next_question(self):
         self.clear_window()
         self.attempt = 1  #reset attempt
+        self.stop_timer()  #stop previous timer
 
         try:
             pil_image = Image.open("Assets/brick_kues.jpg")
@@ -212,15 +292,7 @@ class MathQuiz:
             print(f"Background image loading error: {e}")
             
         # Random number generation based on difficulty
-        if self.mode == "Easy":
-            num1 = random.randint(0, 9)
-            num2 = random.randint(0, 9)
-        elif self.mode == "Moderate":
-            num1 = random.randint(10, 99)
-            num2 = random.randint(10, 99)
-        else:  # Advanced
-            num1 = random.randint(1000, 9999)
-            num2 = random.randint(1000, 9999)
+        num1, num2 = self.randomInt(self.mode)
 
         # Randomize operator
         op = random.choice(["+", "-"])
@@ -228,6 +300,7 @@ class MathQuiz:
 
         self.total_questions += 1
         self.displayProblem(num1, op, num2)
+        self.start_timer()  #start timer for new question
 
     # Display the question to the user and accept their answer
     def displayProblem(self, num1, op, num2):
@@ -396,6 +469,7 @@ class MathQuiz:
         return user_answer == self.correct_answer
     
     def show_retry(self, result_text, retry=False):
+        self.stop_timer()
         self.clear_window()
         # Keep brick background from next_question
         ctk.CTkLabel(self.window, text=result_text, font=("Comic Sans MS", 24), 
@@ -453,6 +527,7 @@ class MathQuiz:
             self.show_advanced_mode(main_frame)
 
     def show_result(self, result_text):
+        self.stop_timer()
         self.clear_window()
         # Keep brick background from next_question
         ctk.CTkLabel(self.window, text=result_text, font=("Comic Sans MS", 24),
@@ -469,6 +544,48 @@ class MathQuiz:
         ctk.CTkButton(self.window, text="Back to Menu", **self.button_style,
                      command=self.create_start_screen).pack(pady=10)
 
+    def displayResults(self):
+        self.clear_window()
+        
+        # Calculate final score out of 100
+        max_possible_score = self.total_questions * 10
+        final_score = min(100, (self.score / max_possible_score) * 100) if max_possible_score > 0 else 0
+        
+        # Determine grade
+        if final_score >= 90:
+            grade = "A+"
+        elif final_score >= 80:
+            grade = "A"
+        elif final_score >= 70:
+            grade = "B"
+        elif final_score >= 60:
+            grade = "C"
+        elif final_score >= 50:
+            grade = "D"
+        else:
+            grade = "F"
+        
+        # Display results
+        ctk.CTkLabel(self.window, text="Quiz Complete!", 
+                     font=("Comic Sans MS", 32, "bold"),
+                     text_color="black").pack(pady=30)
+        
+        ctk.CTkLabel(self.window, text=f"Final Score: {self.score}/{max_possible_score} ({final_score:.1f}%)",
+                     font=("Comic Sans MS", 24),
+                     text_color="black").pack(pady=10)
+        
+        ctk.CTkLabel(self.window, text=f"Grade: {grade}",
+                     font=("Comic Sans MS", 28, "bold"),
+                     text_color="black").pack(pady=20)
+        
+        # Play Again - goes to same difficulty level
+        ctk.CTkButton(self.window, text="Play Again", **self.button_style,
+                     command=lambda: self.start_quiz(self.mode)).pack(pady=10)
+        
+        # Back to Menu
+        ctk.CTkButton(self.window, text="Back to Menu", **self.button_style,
+                     command=self.create_start_screen).pack(pady=10)
+        
 # Run the program
 if __name__ == "__main__":
     app = MathQuiz(window)
