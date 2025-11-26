@@ -57,7 +57,7 @@ class StudentManager:
             messagebox.showerror("Error", f"Error loading data: {str(e)}")
         
         return students
-        
+
     def save_students(self):
         # Save student data
         try:
@@ -95,9 +95,16 @@ class StudentManager:
         # Main frame
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame.configure(style='Main.TFrame')
+        
+        style = ttk.Style()
+        style.configure('Main.TFrame', background='#1B2D4D')
+        style.configure('Treeview.Heading', font=('Inter', 11, 'bold')) #style headings
         
         # Title
-        title_label = ttk.Label(main_frame, text="BATH SPA UNIVERSITY STUDENT MANAGER", font=('Inter', 20, 'bold'))
+        title_label = ttk.Label(main_frame, text="BATH SPA UNIVERSITY STUDENT MANAGER", font=('Inter', 26, 'bold'),
+                                foreground='#FEFEFE',
+                                background='#1B2D4D')
         title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
         
         # Menu buttons
@@ -120,6 +127,7 @@ class StudentManager:
                 width=240,
                 height=40,
                 corner_radius=10,
+                font=('Inter', 14, 'bold'),
                 fg_color="#FEFEFE",
                 text_color="#2C4674",
                 hover_color="#F0F0F0",
