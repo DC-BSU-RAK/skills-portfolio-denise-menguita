@@ -19,7 +19,6 @@ class StudentManager:
         self.root.title("BSU Student Manager")
         self.root.state('zoomed')  # full screen
         self.root.resizable(True, True)
-        self.root.configure(bg='#2C4674')
         
         # Data file path
         self.data_file = "studentMarks.txt"
@@ -57,7 +56,7 @@ class StudentManager:
             messagebox.showerror("Error", f"Error loading data: {str(e)}")
         
         return students
-
+    
     def save_students(self):
         # Save student data
         try:
@@ -164,6 +163,9 @@ class StudentManager:
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         tree_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
+        # Bind selection event
+        self.tree.bind('<<TreeviewSelect>>', self.on_student_select)
+        
         # Store selected student
         self.selected_student = None
 
@@ -177,7 +179,7 @@ class StudentManager:
         self.display_students_table()
 
     def display_students_table(self):
-        # Show all student records
+        '''Show all student records'''
         # Clear existing data
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -189,7 +191,7 @@ class StudentManager:
             grade = self.calculate_grade(percentage)
             
             self.tree.insert("", tk.END, values=(
-                student['code'],
+                str(student['code']),  #convert to string
                 student['name'],
                 f"{total_coursework}/60",
                 f"{student['exam_mark']}/100",
@@ -203,11 +205,19 @@ class StudentManager:
         if selection:
             item = selection[0]
             student_code = self.tree.item(item)['values'][0]
-            # Find the student in the actual data list
-            self.selected_student = next((s for s in self.students if s['code'] == student_code), None)
-            print(f"Selected student: {self.selected_student}")  #debug line
+            # Convert to string
+            student_code = str(student_code).strip()
+            
+            # Debug
+            print(f"Looking for student code: '{student_code}'")
+            print(f"Available codes: {[str(s['code']).strip() for s in self.students]}")
+            
+            # Find student in actual data list
+            self.selected_student = next((s for s in self.students if str(s['code']).strip() == student_code), None)
+            print(f"Selected student: {self.selected_student}")
         else:
             self.selected_student = None
+            print("No selection")
         
     def view_individual_student(self):
         # Display individual student record
@@ -428,7 +438,7 @@ class StudentManager:
                 messagebox.showerror("Error", f"Error adding student: {str(e)}")
         
         ttk.Button(add_window, text="Save", command=save_student).grid(row=7, column=0, columnspan=2, pady=20)
-
+    
     def delete_student(self):
         if not self.selected_student:
             messagebox.showerror("Error", "Please select a student first!")
@@ -458,6 +468,83 @@ class StudentManager:
         student = self.selected_student
         index = self.students.index(student)
         self.show_update_form(student, index)
+    
+    def show_update_form(self, student, index):
+        # Show form to update student details
+        update_window = tk.Toplevel(self.root)
+        update_window.title("Update Student")
+        update_window.geometry("400x300")
+        
+        # Form fields with current values
+        ttk.Label(update_window, text="Student Code:").grid(row=0, column=0, padx=10, pady=5, sticky=tk.W)
+        code_label = ttk.Label(update_window, text=student['code'])
+        code_label.grid(row=0, column=1, padx=10, pady=5, sticky=tk.W)
+        
+        ttk.Label(update_window, text="Student Name:").grid(row=1, column=0, padx=10, pady=5, sticky=tk.W)
+        name_entry = ttk.Entry(update_window)
+        name_entry.insert(0, student['name'])
+        name_entry.grid(row=1, column=1, padx=10, pady=5)
+        
+        ttk.Label(update_window, text="Coursework Marks (0-20 each):").grid(row=2, column=0, padx=10, pady=5, sticky=tk.W)
+        
+        ttk.Label(update_window, text="Mark 1:").grid(row=3, column=0, padx=10, pady=2, sticky=tk.W)
+        mark1_entry = ttk.Entry(update_window)
+        mark1_entry.insert(0, str(student['course_marks'][0]))
+        mark1_entry.grid(row=3, column=1, padx=10, pady=2)
+        
+        ttk.Label(update_window, text="Mark 2:").grid(row=4, column=0, padx=10, pady=2, sticky=tk.W)
+        mark2_entry = ttk.Entry(update_window)
+        mark2_entry.insert(0, str(student['course_marks'][1]))
+        mark2_entry.grid(row=4, column=1, padx=10, pady=2)
+        
+        ttk.Label(update_window, text="Mark 3:").grid(row=5, column=0, padx=10, pady=2, sticky=tk.W)
+        mark3_entry = ttk.Entry(update_window)
+        mark3_entry.insert(0, str(student['course_marks'][2]))
+        mark3_entry.grid(row=5, column=1, padx=10, pady=2)
+        
+        ttk.Label(update_window, text="Exam Mark (0-100):").grid(row=6, column=0, padx=10, pady=5, sticky=tk.W)
+        exam_entry = ttk.Entry(update_window)
+        exam_entry.insert(0, str(student['exam_mark']))
+        exam_entry.grid(row=6, column=1, padx=10, pady=5)
+        
+        def save_changes():
+            try:
+                # Validate inputs
+                name = name_entry.get().strip()
+                mark1 = int(mark1_entry.get())
+                mark2 = int(mark2_entry.get())
+                mark3 = int(mark3_entry.get())
+                exam = int(exam_entry.get())
+                
+                # Validate ranges
+                if not (0 <= mark1 <= 20) or not (0 <= mark2 <= 20) or not (0 <= mark3 <= 20):
+                    messagebox.showerror("Error", "Coursework marks must be between 0 and 20!")
+                    return
+                
+                if not (0 <= exam <= 100):
+                    messagebox.showerror("Error", "Exam mark must be between 0 and 100!")
+                    return
+                
+                # Update student
+                self.students[index]['name'] = name
+                self.students[index]['course_marks'] = [mark1, mark2, mark3]
+                self.students[index]['exam_mark'] = exam
+                
+                if self.save_students():
+                    messagebox.showinfo("Success", "Student updated successfully!")
+                    update_window.destroy()
+                    self.display_students_table()  # Refresh table
+                    self.selected_student = None  # Clear selection
+                else:
+                    # Revert changes if save failed
+                    self.students[index] = student
+                    
+            except ValueError:
+                messagebox.showerror("Error", "Please enter valid numbers for marks!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error updating student: {str(e)}")
+        
+        ttk.Button(update_window, text="Save Changes", command=save_changes).grid(row=7, column=0, columnspan=2, pady=20)
         
 def main():
     root = tk.Tk()
