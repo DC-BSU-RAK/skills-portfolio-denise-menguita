@@ -57,7 +57,22 @@ class StudentManager:
             messagebox.showerror("Error", f"Error loading data: {str(e)}")
         
         return students
-
+        
+    def save_students(self):
+        # Save student data
+        try:
+            with open(self.data_file, 'w') as file:
+                # Write number of students
+                file.write(f"{len(self.students)}\n")
+                # Write each student record
+                for student in self.students:
+                    course_marks = student['course_marks']
+                    file.write(f"{student['code']},{student['name']},{course_marks[0]},{course_marks[1]},{course_marks[2]},{student['exam_mark']}\n")
+            return True
+        except Exception as e:
+            messagebox.showerror("Error", f"Error saving data: {str(e)}")
+            return False
+    
     def calculate_percentage(self, student):
         total_coursework = sum(student['course_marks'])
         total_marks = total_coursework + student['exam_mark']
@@ -85,9 +100,37 @@ class StudentManager:
         title_label = ttk.Label(main_frame, text="BATH SPA UNIVERSITY STUDENT MANAGER", font=('Inter', 20, 'bold'))
         title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
         
+        # Menu buttons
+        buttons = [
+            ("Show all students", self.display_students_table),
+            ("View individual student record", self.view_individual_student),
+            ("Student with highest total mark", self.show_highest_student),
+            ("Student with lowest total mark", self.show_lowest_student),
+            ("Sort student records", self.sort_students),
+            ("Add record", self.add_student),
+            ("Delete record", self.delete_student),  
+            ("Update record", self.update_student)
+        ]
+        
+        for i, (text, command) in enumerate(buttons):
+            btn = ctk.CTkButton(
+                main_frame, 
+                text=text, 
+                command=command, 
+                width=240,
+                height=40,
+                corner_radius=10,
+                fg_color="#FEFEFE",
+                text_color="#2C4674",
+                hover_color="#F0F0F0",
+                border_width=1,
+                border_color="#2C4674"
+            )
+            btn.grid(row=i+1, column=0, pady=5, padx=10, sticky=tk.W)
+
         # Table frame
         table_frame = ttk.Frame(main_frame)
-        table_frame.grid(row=1, column=1, rowspan=8, padx=10, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+        table_frame.grid(row=1, column=1, rowspan=9, padx=10, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Create treeview for table
         columns = ("Student No", "Name", "Total Coursework", "Exam Mark", "Overall Percentage", "Grade")
@@ -120,7 +163,7 @@ class StudentManager:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(8, weight=1)
+        main_frame.rowconfigure(9, weight=1)
         
         # Display all student records immediately
         self.display_students_table()
@@ -152,10 +195,262 @@ class StudentManager:
         if selection:
             item = selection[0]
             student_code = self.tree.item(item)['values'][0]
+            # Find the student in the actual data list
             self.selected_student = next((s for s in self.students if s['code'] == student_code), None)
+            print(f"Selected student: {self.selected_student}")  #debug line
         else:
             self.selected_student = None
+        
+    def view_individual_student(self):
+        # Display individual student record
+        if not self.students:
+            messagebox.showinfo("Info", "No student records found.")
+            return
+        
+        # Create selection dialog
+        selection_window = tk.Toplevel(self.root)
+        selection_window.title("Select Student")
+        selection_window.geometry("300x200")
+        
+        ttk.Label(selection_window, text="Select a student:").pack(pady=10)
+        
+        # Create listbox with student names and codes
+        listbox = tk.Listbox(selection_window, width=40, height=10)
+        listbox.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+        
+        for student in self.students:
+            listbox.insert(tk.END, f"{student['code']} - {student['name']}")
+        
+        def on_select():
+            selection = listbox.curselection()
+            if selection:
+                index = selection[0]
+                student = self.students[index]
+                
+                percentage = self.calculate_percentage(student)
+                grade = self.calculate_grade(percentage)
+                total_coursework = sum(student['course_marks'])
+                
+                output = f"INDIVIDUAL STUDENT RECORD\n"
+                output += "=" * 50 + "\n\n"
+                output += f"Name: {student['name']}\n"
+                output += f"Student Number: {student['code']}\n"
+                output += f"Coursework Marks: {student['course_marks']}\n"
+                output += f"Total Coursework: {total_coursework}/60\n"
+                output += f"Exam Mark: {student['exam_mark']}/100\n"
+                output += f"Overall Percentage: {percentage:.2f}%\n"
+                output += f"Grade: {grade}\n"
+                
+                messagebox.showinfo("Student Record", output)
+                selection_window.destroy()
+            else:
+                messagebox.showwarning("Warning", "Please select a student.")
+        
+        ttk.Button(selection_window, text="Select", command=on_select).pack(pady=10)
+    
+    def show_highest_student(self):
+        if not self.students:
+            messagebox.showinfo("Info", "No student records found.")
+            return
+        
+        highest_student = max(self.students, key=self.calculate_percentage)
+        percentage = self.calculate_percentage(highest_student)
+        
+        # Clear table and show only highest student
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        total_coursework = sum(highest_student['course_marks'])
+        grade = self.calculate_grade(percentage)
+        
+        self.tree.insert("", tk.END, values=(
+            highest_student['code'],
+            highest_student['name'],
+            f"{total_coursework}/60",
+            f"{highest_student['exam_mark']}/100",
+            f"{percentage:.2f}%",
+            grade
+        ))
+    
+    def show_lowest_student(self):
+        if not self.students:
+            messagebox.showinfo("Info", "No student records found.")
+            return
+        
+        lowest_student = min(self.students, key=self.calculate_percentage)
+        percentage = self.calculate_percentage(lowest_student)
+        
+        # Clear table and show only lowest student
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        total_coursework = sum(lowest_student['course_marks'])
+        grade = self.calculate_grade(percentage)
+        
+        self.tree.insert("", tk.END, values=(
+            lowest_student['code'],
+            lowest_student['name'],
+            f"{total_coursework}/60",
+            f"{lowest_student['exam_mark']}/100",
+            f"{percentage:.2f}%",
+            grade
+        ))
+    
+    def sort_students(self):
+        # Sort student records
+        if not self.students:
+            messagebox.showinfo("Info", "No student records found.")
+            return
+        
+        # Create sorting dialog
+        sort_window = tk.Toplevel(self.root)
+        sort_window.title("Sort Students")
+        sort_window.geometry("300x200")
+        
+        ttk.Label(sort_window, text="Sort by:").pack(pady=10)
+        
+        sort_option = tk.StringVar(value="percentage")
+        
+        ttk.Radiobutton(sort_window, text="Percentage (High to Low)", 
+                       variable=sort_option, value="percentage_desc").pack(anchor=tk.W)
+        ttk.Radiobutton(sort_window, text="Percentage (Low to High)", 
+                       variable=sort_option, value="percentage_asc").pack(anchor=tk.W)
+        ttk.Radiobutton(sort_window, text="Name (A-Z)", 
+                       variable=sort_option, value="name_asc").pack(anchor=tk.W)
+        ttk.Radiobutton(sort_window, text="Name (Z-A)", 
+                       variable=sort_option, value="name_desc").pack(anchor=tk.W)
+        
+        def perform_sort():
+            option = sort_option.get()
+            
+            if option == "percentage_desc":
+                self.students.sort(key=self.calculate_percentage, reverse=True)
+            elif option == "percentage_asc":
+                self.students.sort(key=self.calculate_percentage)
+            elif option == "name_asc":
+                self.students.sort(key=lambda x: x['name'].lower())
+            elif option == "name_desc":
+                self.students.sort(key=lambda x: x['name'].lower(), reverse=True)
+            
+            sort_window.destroy()
+            self.display_students_table()
+        
+        ttk.Button(sort_window, text="Sort", command=perform_sort).pack(pady=10)
+    
+    def add_student(self):
+        add_window = tk.Toplevel(self.root)
+        add_window.title("Add Student")
+        add_window.geometry("400x300")
+        
+        # Form fields
+        ttk.Label(add_window, text="Student Code (1000-9999):").grid(row=0, column=0, padx=10, pady=5, sticky=tk.W)
+        code_entry = ttk.Entry(add_window)
+        code_entry.grid(row=0, column=1, padx=10, pady=5)
+        
+        ttk.Label(add_window, text="Student Name:").grid(row=1, column=0, padx=10, pady=5, sticky=tk.W)
+        name_entry = ttk.Entry(add_window)
+        name_entry.grid(row=1, column=1, padx=10, pady=5)
+        
+        ttk.Label(add_window, text="Coursework Marks (0-20 each):").grid(row=2, column=0, padx=10, pady=5, sticky=tk.W)
+        
+        ttk.Label(add_window, text="Mark 1:").grid(row=3, column=0, padx=10, pady=2, sticky=tk.W)
+        mark1_entry = ttk.Entry(add_window)
+        mark1_entry.grid(row=3, column=1, padx=10, pady=2)
+        
+        ttk.Label(add_window, text="Mark 2:").grid(row=4, column=0, padx=10, pady=2, sticky=tk.W)
+        mark2_entry = ttk.Entry(add_window)
+        mark2_entry.grid(row=4, column=1, padx=10, pady=2)
+        
+        ttk.Label(add_window, text="Mark 3:").grid(row=5, column=0, padx=10, pady=2, sticky=tk.W)
+        mark3_entry = ttk.Entry(add_window)
+        mark3_entry.grid(row=5, column=1, padx=10, pady=2)
+        
+        ttk.Label(add_window, text="Exam Mark (0-100):").grid(row=6, column=0, padx=10, pady=5, sticky=tk.W)
+        exam_entry = ttk.Entry(add_window)
+        exam_entry.grid(row=6, column=1, padx=10, pady=5)
+        
+        def save_student():
+            try:
+                # Validate inputs
+                code = code_entry.get().strip()
+                name = name_entry.get().strip()
+                mark1 = int(mark1_entry.get())
+                mark2 = int(mark2_entry.get())
+                mark3 = int(mark3_entry.get())
+                exam = int(exam_entry.get())
+                
+                # Check if code already exists
+                if any(student['code'] == code for student in self.students):
+                    messagebox.showerror("Error", "Student code already exists!")
+                    return
+                
+                # Validate ranges
+                if not (1000 <= int(code) <= 9999):
+                    messagebox.showerror("Error", "Student code must be between 1000 and 9999!")
+                    return
+                
+                if not (0 <= mark1 <= 20) or not (0 <= mark2 <= 20) or not (0 <= mark3 <= 20):
+                    messagebox.showerror("Error", "Coursework marks must be between 0 and 20!")
+                    return
+                
+                if not (0 <= exam <= 100):
+                    messagebox.showerror("Error", "Exam mark must be between 0 and 100!")
+                    return
+                
+                # Add new student
+                new_student = {
+                    'code': code,
+                    'name': name,
+                    'course_marks': [mark1, mark2, mark3],
+                    'exam_mark': exam
+                }
+                
+                self.students.append(new_student)
+                
+                if self.save_students():
+                    messagebox.showinfo("Success", "Student added successfully!")
+                    add_window.destroy()
+                    self.display_students_table()  # Refresh table
+                else:
+                    self.students.remove(new_student)  # Remove if save failed
+                    
+            except ValueError:
+                messagebox.showerror("Error", "Please enter valid numbers for marks!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error adding student: {str(e)}")
+        
+        ttk.Button(add_window, text="Save", command=save_student).grid(row=7, column=0, columnspan=2, pady=20)
 
+    def delete_student(self):
+        if not self.selected_student:
+            messagebox.showerror("Error", "Please select a student first!")
+            print(f"No student selected. Available students: {[s['code'] for s in self.students]}")  #debug
+            return
+        
+        student = self.selected_student
+        print(f"Attempting to delete: {student['code']} - {student['name']}")  #debug
+        
+        if messagebox.askyesno("Confirm Delete", 
+                             f"Are you sure you want to delete {student['name']} ({student['code']})?"):
+            self.students.remove(student)
+            
+            if self.save_students():
+                messagebox.showinfo("Success", "Student deleted successfully!")
+                self.selected_student = None
+                self.display_students_table()
+            else:
+                # Restore if save failed
+                self.students.append(student)
+    
+    def update_student(self):
+        if not self.selected_student:
+            messagebox.showerror("Error", "Please select a student first!")
+            return
+        
+        student = self.selected_student
+        index = self.students.index(student)
+        self.show_update_form(student, index)
+        
 def main():
     root = tk.Tk()
 
